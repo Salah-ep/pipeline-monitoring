@@ -1,0 +1,59 @@
+# filebeat.yml
+# Collecte les logs JSON du pipeline Python et les envoie vers Elasticsearch
+
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /app/logs/pipeline.log
+    json.keys_under_root: true        # Les champs JSON deviennent des champs ES
+    json.add_error_key: true          # Ajoute un champ en cas d'erreur de parsing
+    json.message_key: message         # Champ principal du message
+    multiline.pattern: '^\{'          # Chaque log commence par {
+    multiline.negate: true
+    multiline.match: after
+
+    # Tags pour filtrer dans Kibana
+    tags: ["python-pipeline", "etl", "monitoring"]
+
+    fields:
+      environment: production
+      app: data-pipeline
+    fields_under_root: true
+
+# Processeurs : enrichissement des événements
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_docker_metadata: ~            # Ajoute les métadonnées Docker si dispo
+  - drop_fields:
+      fields: ["agent.ephemeral_id", "ecs.version"]
+      ignore_missing: true
+
+# Sortie vers Elasticsearch
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "pipeline-logs-%{+yyyy.MM.dd}"   # Index journalier
+  username: "elastic"
+  password: "${ELASTIC_PASSWORD}"          # Variable d'environnement
+
+# Template d'index : optimisé pour les logs
+setup.template.name: "pipeline-logs"
+setup.template.pattern: "pipeline-logs-*"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0              # Pas de réplication en dev
+
+# Kibana : pour importer les dashboards automatiquement
+setup.kibana:
+  host: "kibana:5601"
+
+setup.dashboards.enabled: true
+
+# Logging Filebeat lui-même
+logging.level: warning
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 3

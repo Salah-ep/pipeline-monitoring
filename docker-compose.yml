@@ -1,0 +1,102 @@
+version: "3.8"
+
+# ─── Réseau interne ──────────────────────────────────────────────────────────
+networks:
+  monitoring-net:
+    driver: bridge
+
+# ─── Volumes persistants ─────────────────────────────────────────────────────
+volumes:
+  esdata:
+    driver: local
+
+# ─── Services ────────────────────────────────────────────────────────────────
+services:
+
+  # ── Elasticsearch ──────────────────────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m        # Limite mémoire (adapter selon la machine)
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD:-changeme} http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\\|yellow\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+
+  # ── Kibana ─────────────────────────────────────────────────────────────────
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      - SERVER_NAME=kibana
+    ports:
+      - "5601:5601"
+    networks:
+      - monitoring-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q 'available'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── Filebeat ───────────────────────────────────────────────────────────────
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.12.0
+    container_name: filebeat
+    user: root                              # Nécessaire pour lire les logs
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - pipeline-logs:/app/logs:ro          # Logs partagés avec le pipeline
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - monitoring-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
+    command: filebeat -e -strict.perms=false
+
+  # ── Pipeline Python ────────────────────────────────────────────────────────
+  pipeline:
+    build:
+      context: ./pipeline
+      dockerfile: Dockerfile
+    container_name: data-pipeline
+    volumes:
+      - pipeline-logs:/app/logs             # Partage les logs avec Filebeat
+    networks:
+      - monitoring-net
+    depends_on:
+      - filebeat
+    restart: unless-stopped
+
+# Volume partagé entre pipeline et filebeat
+volumes:
+  esdata:
+  pipeline-logs:
