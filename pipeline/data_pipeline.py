@@ -238,4 +238,4 @@ if __name__ == "__main__":
             run_pipeline(source, destination)
             time.sleep(random.uniform(1, 4))  # Intervalle entre les runs
     except KeyboardInterrupt:
-        print("\n✋ Pipeline arrêté proprement.")
+        print("Pipeline arrêté proprement.")
