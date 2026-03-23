@@ -167,7 +167,14 @@ def validate(pipeline_id: str, records: list[dict]) -> dict:
     total = len(records)
     nulls = sum(1 for r in records if r["value_normalized"] is None)
     duplicates = total - len({r["id"] for r in records})
-    quality_score = round((1 - (nulls + duplicates) / max(total, 1)) * 100, 2)
+    if total == 0:
+        logger.warning(
+            "Aucun enregistrement à valider — pipeline vide",
+            extra={"pipeline_id": pipeline_id, "stage": "validate"},
+        )
+        return {"quality_score": 0, "nulls": 0, "duplicates": 0}
+
+    quality_score = round((1 - (nulls + duplicates) / total) * 100, 2)
 
     duration = round((time.time() - start) * 1000, 2)
 
