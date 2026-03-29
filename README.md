@@ -39,11 +39,11 @@ Surveillance en temps quasi réel d'un pipeline de données Python via la stack 
 pipeline-monitoring/
 ├── pipeline/
 │   ├── data_pipeline.py      # Pipeline ETL principal
-│   ├── Dockerfile
-│   └── requirements.txt
+│   └── Dockerfile
 ├── filebeat/
 │   └── filebeat.yml          # Config collecte & parsing
 ├── docker-compose.yml
+├── requirements.txt          # Dépendances Python
 ├── .env.example
 ├── .gitignore
 └── README.md
