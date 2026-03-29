@@ -5,7 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY data_pipeline.py .
+COPY pipeline/data_pipeline.py .
 
 RUN mkdir -p logs
 
