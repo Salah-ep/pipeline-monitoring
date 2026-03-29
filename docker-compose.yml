@@ -5,11 +5,6 @@ networks:
   monitoring-net:
     driver: bridge
 
-# ─── Volumes persistants ─────────────────────────────────────────────────────
-volumes:
-  esdata:
-    driver: local
-
 # ─── Services ────────────────────────────────────────────────────────────────
 services:
 
@@ -21,7 +16,7 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=true
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m        # Limite mémoire (adapter selon la machine)
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
       - bootstrap.memory_lock=true
     ulimits:
       memlock:
@@ -65,12 +60,12 @@ services:
   filebeat:
     image: docker.elastic.co/beats/filebeat:8.12.0
     container_name: filebeat
-    user: root                              # Nécessaire pour lire les logs
+    user: root
     environment:
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
     volumes:
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - pipeline-logs:/app/logs:ro          # Logs partagés avec le pipeline
+      - pipeline-logs:/app/logs:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -85,18 +80,19 @@ services:
   # ── Pipeline Python ────────────────────────────────────────────────────────
   pipeline:
     build:
-      context: ./pipeline
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: pipeline/Dockerfile
     container_name: data-pipeline
     volumes:
-      - pipeline-logs:/app/logs             # Partage les logs avec Filebeat
+      - pipeline-logs:/app/logs
     networks:
       - monitoring-net
     depends_on:
       - filebeat
     restart: unless-stopped
 
-# Volume partagé entre pipeline et filebeat
+# ─── Volumes persistants ─────────────────────────────────────────────────────
 volumes:
   esdata:
+    driver: local
   pipeline-logs:
