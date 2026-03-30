@@ -79,8 +79,8 @@ docker-compose ps
 
 | Service | URL | Identifiants |
 |---------|-----|-------------|
-| Kibana | http://localhost:5601 | elastic / *ton mot de passe* |
-| Elasticsearch | http://localhost:9200 | elastic / *ton mot de passe* |
+| Kibana | http://localhost:5601 | elastic / * mot de passe défini dans le fichier `.env` * |
+| Elasticsearch | http://localhost:9200 | elastic / * mot de passe défini dans le fichier `.env`* |
 
 ---
 
