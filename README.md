@@ -61,7 +61,7 @@ pipeline-monitoring/
 
 ```bash
 # 1. Cloner le repo
-git clone https://github.com/ton-username/pipeline-monitoring.git
+git clone https://github.com/Salah-ep/pipeline-monitoring.git
 cd pipeline-monitoring
 
 # 2. Configurer les variables d'environnement
